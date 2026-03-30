@@ -4,10 +4,10 @@ Pod::Spec.new do |s|
   s.version          = '1.0.0'
   s.summary          = 'Analytics module for AdaptiveSDK — learning event tracking.'
 
-  s.homepage         = 'https://github.com/YOUR_ORG/AdaptiveSDK'
+  s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
-  s.author           = { 'Adaptive' => 'dev@adaptive.com' }
-  s.source           = { :git => 'https://github.com/YOUR_ORG/AdaptiveSDK.git', :tag => s.version.to_s }
+  s.author           = { 'AlAdwaa' => 'dev_team@aladwaa.org' }
+  s.source           = { :git => 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK.git', :tag => s.version.to_s }
 
   s.swift_version          = '5.9'
   s.ios.deployment_target  = '15.0'
