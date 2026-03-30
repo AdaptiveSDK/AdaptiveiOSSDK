@@ -1,21 +1,37 @@
-// swift-tools-version: 6.0
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
+// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
     name: "AdaptiveSDK",
+    platforms: [
+        .iOS(.v15),
+        .macOS(.v12)
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
-        .library(
-            name: "AdaptiveSDK",
-            targets: ["AdaptiveSDK"]),
+        .library(name: "AdaptiveCore",      targets: ["AdaptiveCore"]),
+        .library(name: "AdaptiveAnalytics", targets: ["AdaptiveAnalytics"]),
+        .library(name: "AdaptiveMessaging", targets: ["AdaptiveMessaging"])
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
+        // MARK: - AdaptiveCore
         .target(
-            name: "AdaptiveSDK"),
+            name: "AdaptiveCore",
+            path: "Sources/AdaptiveSDK/AdaptiveCore/Sources/AdaptiveCore"
+        ),
 
-    ]
+        // MARK: - AdaptiveAnalytics
+        .target(
+            name: "AdaptiveAnalytics",
+            dependencies: ["AdaptiveCore"],
+            path: "Sources/AdaptiveSDK/AdaptiveAnalytics/Sources/AdaptiveAnalytics"
+        ),
+
+        // MARK: - AdaptiveMessaging
+        .target(
+            name: "AdaptiveMessaging",
+            dependencies: ["AdaptiveCore"],
+            path: "Sources/AdaptiveSDK/AdaptiveMessaging/Sources/AdaptiveMessaging"
+        )
+    ],
+    swiftLanguageVersions: [.v5]
 )
