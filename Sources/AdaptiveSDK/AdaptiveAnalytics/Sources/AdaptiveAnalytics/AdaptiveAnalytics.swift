@@ -8,6 +8,18 @@ public final class AdaptiveAnalytics {
     public init() {}
 
     
+    public func logRegistrationEvent(data: RegistrationEvent) async {
+        await logEvent(path: "registration", data: data)
+    }
+
+    public func logLoginEvent(data: LoginEvent) async {
+        await logEvent(path: "login", data: data)
+    }
+
+    public func logUserPropertiesEvent(data: UserPropertiesEvent) async {
+        await logEvent(path: "user-properties", data: data)
+    }
+
     public func logGradeChangeEvent (data : GradeChangeEvent)  async{
         await logEvent(path: "grade-change", data: data)
     }
