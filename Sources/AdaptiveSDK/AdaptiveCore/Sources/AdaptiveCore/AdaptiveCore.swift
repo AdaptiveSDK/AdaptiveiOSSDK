@@ -26,7 +26,7 @@ public final class AdaptiveCore {
     public func login(userId: String, userName: String, userEmail: String) {
         checkInitialization()
         currentUser = AdaptiveUser(userId: userId, userEmail: userEmail, userName: userName)
-        AdaptiveLogger.log(tag: "AdaptiveCore", message: "User Login successfully \(currentUser?.userId ?? "")")
+        AdaptiveLogger.log(tag: "AdaptiveCore", message: "User Login successfully")
     }
 
     public func logout() {

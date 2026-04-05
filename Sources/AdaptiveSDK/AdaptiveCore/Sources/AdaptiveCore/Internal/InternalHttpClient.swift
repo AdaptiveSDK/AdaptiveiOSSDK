@@ -4,7 +4,8 @@ internal final class InternalHttpClient {
 
     internal static let baseURL = "https://beta.adlearning.api.aladwaa.com/"
 
-    private let apiKey   : String = Secrets.functionCode
+    // TODO: move to a server-side token exchange before production
+    private let apiKey   : String = "-v1DJgexVnhfpdRw0v3ZUaszqwg_GOf-tdp282u-B7g3AzFugPf__Q=="
     private let baseURL  : String = InternalHttpClient.baseURL
     private let session  : URLSession
     private let queue    : PersistentRequestQueue
@@ -36,14 +37,14 @@ internal final class InternalHttpClient {
         self.processor.start()
     }
 
-    // MARK: – Public API
+    // MARK: - Public API
 
     func post(path: String, body: String) async -> Result<String, Error> {
         let fullURL = baseURL + path
         let queued  = QueuedRequest(url: fullURL, method: "POST", body: body)
 
         guard observer.isCurrentlyConnected else {
-            AdaptiveLogger.log(tag: "HttpClient", message: "Offline — queuing POST \(fullURL)")
+            AdaptiveLogger.log(tag: "HttpClient", message: "Offline - queuing POST \(fullURL)")
             queue.push(queued)
             return .failure(HttpClientError.offline)
         }
@@ -51,7 +52,7 @@ internal final class InternalHttpClient {
         let result = await executeWithRetry(queued: queued)
 
         if case .failure = result {
-            AdaptiveLogger.log(tag: "HttpClient", message: "All retries exhausted — queuing POST \(fullURL)")
+            AdaptiveLogger.log(tag: "HttpClient", message: "All retries exhausted - queuing POST \(fullURL)")
             queue.push(queued)
         }
 
@@ -63,7 +64,7 @@ internal final class InternalHttpClient {
         let queued  = QueuedRequest(url: fullURL, method: "GET")
 
         guard observer.isCurrentlyConnected else {
-            AdaptiveLogger.log(tag: "HttpClient", message: "Offline — skipping GET \(fullURL)")
+            AdaptiveLogger.log(tag: "HttpClient", message: "Offline - skipping GET \(fullURL)")
             return .failure(HttpClientError.offline)
         }
 
@@ -79,14 +80,8 @@ internal final class InternalHttpClient {
         processor.stop()
     }
 
-    // MARK: – Retry logic
+    // MARK: - Retry logic
 
-    /// Attempts the request up to `maxInlineRetries` times.
-    /// Checks connectivity **before each attempt**:
-    ///  - Offline → stops immediately and returns `.failure(.offline)` so the
-    ///    caller can queue the request.
-    ///  - Attempt succeeds → returns `.success` right away.
-    ///  - Attempt fails but still online → waits (1 s × attempt) then retries.
     private func executeWithRetry(queued: QueuedRequest) async -> Result<String, Error> {
         var lastResult: Result<String, Error> = .failure(HttpClientError.offline)
 
@@ -94,12 +89,12 @@ internal final class InternalHttpClient {
             guard observer.isCurrentlyConnected else {
                 AdaptiveLogger.log(
                     tag: "HttpClient",
-                    message: "Connection lost before attempt \(attempt)/\(Self.maxInlineRetries) — aborting retries"
+                    message: "Connection lost before attempt \(attempt)/\(Self.maxInlineRetries) - aborting retries"
                 )
                 return .failure(HttpClientError.offline)
             }
 
-            AdaptiveLogger.log(tag: "HttpClient", message: "Attempt \(attempt)/\(Self.maxInlineRetries) → \(queued.url)")
+            AdaptiveLogger.log(tag: "HttpClient", message: "Attempt \(attempt)/\(Self.maxInlineRetries) -> \(queued.url)")
             lastResult = await Self.executeNow(queued: queued, session: session, apiKey: apiKey)
 
             if case .success = lastResult {
@@ -114,7 +109,7 @@ internal final class InternalHttpClient {
 
             if attempt < Self.maxInlineRetries {
                 let waitNs = Self.retryDelayNs * UInt64(attempt)
-                AdaptiveLogger.log(tag: "HttpClient", message: "Waiting \(attempt)s before next retry…")
+                AdaptiveLogger.log(tag: "HttpClient", message: "Waiting \(attempt)s before next retry...")
                 try? await Task.sleep(nanoseconds: waitNs)
             }
         }
@@ -122,7 +117,7 @@ internal final class InternalHttpClient {
         return lastResult
     }
 
-    // MARK: – Execution
+    // MARK: - Execution
 
     private static func executeNow(
         queued  : QueuedRequest,
@@ -157,7 +152,7 @@ internal final class InternalHttpClient {
             let httpResponse     = response as! HTTPURLResponse
             let responseBody     = String(data: data, encoding: .utf8) ?? ""
 
-            AdaptiveLogger.log(tag: "HttpClient", message: "\(queued.method) \(queued.url) → \(httpResponse.statusCode)")
+            AdaptiveLogger.log(tag: "HttpClient", message: "\(queued.method) \(queued.url) -> \(httpResponse.statusCode)")
 
             if (200...299).contains(httpResponse.statusCode) {
                 return .success(responseBody)
@@ -171,7 +166,7 @@ internal final class InternalHttpClient {
     }
 }
 
-// MARK: – Errors
+// MARK: - Errors
 
 internal enum HttpClientError: LocalizedError {
     case offline
@@ -187,4 +182,6 @@ internal enum HttpClientError: LocalizedError {
         case .httpError(let c, let b):  return "HTTP \(c): \(b)"
         case .notInitialized:           return "AdaptiveCore has not been initialized. Call AdaptiveCore.initialize() first."
         case .noUser:                   return "No logged-in user. Call AdaptiveCore.login() first."
+        }
+    }
 }
