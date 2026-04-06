@@ -5,6 +5,17 @@ public final class AdaptiveCore {
     private var httpClient : InternalHttpClient? = nil
     public  var currentUser: AdaptiveUser?       = nil
 
+    // ── Login listeners ───────────────────────────────────────────────────────
+    // Modules register here to be notified when a user successfully logs in.
+    // This enables the store-and-forward pattern (e.g. flushing a pending push
+    // token that was received before the user authenticated).
+    private var loginListeners: [(AdaptiveUser) -> Void] = []
+
+    public func addLoginListener(_ listener: @escaping (AdaptiveUser) -> Void) {
+        loginListeners.append(listener)
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     private init() {}
 
     public func initialize(clientId: String, debug: Bool) {
@@ -25,7 +36,9 @@ public final class AdaptiveCore {
 
     public func login(userId: String, userName: String, userEmail: String) {
         checkInitialization()
-        currentUser = AdaptiveUser(userId: userId, userEmail: userEmail, userName: userName)
+        let user = AdaptiveUser(userId: userId, userEmail: userEmail, userName: userName)
+        currentUser = user
+        loginListeners.forEach { $0(user) }
         AdaptiveLogger.log(tag: "AdaptiveCore", message: "User Login successfully")
     }
 

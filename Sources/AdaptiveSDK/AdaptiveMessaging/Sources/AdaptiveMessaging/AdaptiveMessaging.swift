@@ -4,10 +4,62 @@ import Foundation
 public final class AdaptiveMessaging {
     nonisolated(unsafe) public static let shared = AdaptiveMessaging()
 
-    private init() {}
+    // ── Store-and-forward (pre-login push token) ──────────────────────────────
+    //
+    // Industry pattern (WebEngage, FreshChat, CleverTap):
+    //   1. Push token arrives at any point -- even before the user logs in.
+    //   2. We always store the token. If a user is already authenticated we
+    //      send it immediately; otherwise we persist it and flush it the
+    //      moment login() is called on AdaptiveCore.
+    //   3. The device is always identifiable (permanent deviceId). userId is
+    //      optional metadata added once the user authenticates.
+    //
+    // The loginListener is registered once in init and lives for the lifetime
+    // of the singleton, so no retain-cycle issues occur.
+    // ─────────────────────────────────────────────────────────────────────────
 
+    private init() {
+        AdaptiveCore.shared.addLoginListener { [weak self] user in
+            guard self != nil else { return }
+            guard let pending = MessagingPreferences.getPendingToken() else { return }
+
+            AdaptiveLogger.log(
+                tag: "Adaptive Messaging",
+                message: "Login detected -- flushing pending token for user \(user.userId)"
+            )
+            Task {
+                await MessagingRepository.updateFCMToken(token: pending, userId: user.userId)
+                MessagingPreferences.clearPendingToken()
+                AdaptiveLogger.log(tag: "Adaptive Messaging", message: "Pending token sent successfully")
+            }
+        }
+    }
+
+    // Register or refresh the push token.
+    //
+    // Call this from application(_:didRegisterForRemoteNotificationsWithDeviceToken:)
+    // or from your FCM Messaging.messaging().token(completion:) callback.
+    // It is safe to call at any time -- before or after AdaptiveCore.login().
+    //
+    // - User already logged in  => token is sent to the server immediately
+    //   with the user ID and device ID.
+    // - No user yet             => token is persisted locally (survives app
+    //   restarts) and is automatically flushed the next time
+    //   AdaptiveCore.login() is called, exactly as FreshChat / WebEngage behave.
     public func updateFCMToken(token: String) async {
-        await MessagingRepository.updateFCMToken(token: token)
+        AdaptiveCore.shared.checkInitialization()
+
+        if let currentUser = AdaptiveCore.shared.currentUser {
+            // Fast path: user is authenticated, send straight away.
+            await MessagingRepository.updateFCMToken(token: token, userId: currentUser.userId)
+        } else {
+            // Deferred path: persist the token and wait for login.
+            MessagingPreferences.savePendingToken(token)
+            AdaptiveLogger.log(
+                tag: "Adaptive Messaging",
+                message: "Token stored locally -- will be sent when AdaptiveCore.login() is called"
+            )
+        }
     }
 
     public func isAdaptiveNotification(data: String) -> Bool {

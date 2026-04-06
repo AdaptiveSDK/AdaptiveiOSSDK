@@ -4,19 +4,31 @@ import AdaptiveCore
 
 internal class MessagingRepository {
 
-    static func updateFCMToken(token: String) async {
-        guard let currentUser = AdaptiveCore.shared.currentUser else {
-            fatalError("You must use AdaptiveCore.login() first")
-        }
+    // Sends (or refreshes) the push token for this device.
+    //
+    // Parameters:
+    //   token  -- current APNs / FCM push token.
+    //   userId -- the authenticated user ID, or nil when the token is being
+    //             registered before the user has logged in (pre-login
+    //             store-and-forward pattern).
+    //
+    // The deviceId is always resolved from KeychainHelper so the backend can
+    // track the device regardless of authentication state -- the same approach
+    // used by WebEngage, FreshChat, and CleverTap.
+    static func updateFCMToken(token: String, userId: String?) async {
+        let deviceId = KeychainHelper.getOrCreateDeviceId()
 
         do {
-            let body = try JSONEncoder().encode([
-                "fcmToken": token,
-                "userId": currentUser.userId
-            ])
+            var payload: [String: Any] = [
+                "userId": userId as Any,
+                "deviceId": deviceId,
+                "token": token
+            ]
+
+            let body = try JSONSerialization.data(withJSONObject: payload)
             let bodyString = String(data: body, encoding: .utf8) ?? "{}"
 
-            let result = await AdaptiveCore.shared.post(path: "moodle/update-fcm", body: bodyString)
+            let result = await AdaptiveCore.shared.post(path: "device-tokens", body: bodyString)
             switch result {
             case .success:
                 AdaptiveLogger.log(tag: "Messaging", message: "FCM token synced successfully")
