@@ -56,6 +56,6 @@ public final class AdaptiveAnalytics {
     private func logEvent(path: String, data: Encodable) async {
         AdaptiveCore.shared.checkInitialization()
         guard let encoded = try? JSONEncoder().encode(data) else { return }
-        try? await repo.post(path: "moodle/events/\(path)", data: encoded)
+        try? await repo.post(path: "events/\(path)", data: encoded)
     }
 }

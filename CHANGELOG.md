@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.7] – 2026-04-07
+
+### Fixed
+- **`AdaptiveAnalytics`** – corrected analytics event base path from `moodle/events/` to `events/` to match the current API contract.
+
+---
+
 ## [1.0.6] – 2026-04-07
 
 ### Added

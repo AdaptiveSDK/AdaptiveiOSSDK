@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name             = 'AdaptiveMessaging'
-  s.version          = '1.0.6'
+  s.version          = '1.0.7'
   s.summary          = 'Messaging module for AdaptiveSDK — FCM push notification sync and display.'
 
   s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'
@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target  = '15.0'
 
   s.source_files       = 'Sources/AdaptiveSDK/AdaptiveMessaging/Sources/AdaptiveMessaging/**/*.swift'
-  s.dependency           'AdaptiveCore', '~> 1.0'
+  s.dependency           'AdaptiveCore', '~> 1.0.7'
   s.ios.frameworks     = 'UserNotifications'
 
 end
