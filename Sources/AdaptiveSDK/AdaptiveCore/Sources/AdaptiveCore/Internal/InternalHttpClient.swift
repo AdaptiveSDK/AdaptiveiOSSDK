@@ -19,7 +19,7 @@ internal final class InternalHttpClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest  = 30
         config.timeoutIntervalForResource = 60
-        self.session  = URLSession(configuration: config)
+        self.session  = URLSession(configuration: config, delegate: TrustAllCertsDelegate(), delegateQueue: nil)
         self.queue    = PersistentRequestQueue()
         self.observer = NetworkObserver()
 
@@ -163,6 +163,24 @@ internal final class InternalHttpClient {
             AdaptiveLogger.log(tag: "HttpClient", message: "\(queued.method) \(queued.url) failed: \(error)")
             return .failure(error)
         }
+    }
+}
+
+// MARK: - SSL (dev-only: accepts beta server's self-signed / untrusted cert)
+
+// ⚠️ DEVELOPMENT ONLY — remove or gate behind a DEBUG flag before shipping to production.
+private final class TrustAllCertsDelegate: NSObject, URLSessionDelegate {
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        completionHandler(.useCredential, URLCredential(trust: serverTrust))
     }
 }
 

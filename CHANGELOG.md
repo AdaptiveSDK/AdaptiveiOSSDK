@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.10] – 2026-04-07
+
+### Changed
+- **All modules** – unified version bump to 1.0.10 to align `AdaptiveCore`, `AdaptiveAnalytics`, `AdaptiveMessaging`, and `AdaptiveSDK` on the same version.
+
+---
+
 ## [1.0.9] – 2026-04-07
 
 ### Changed
