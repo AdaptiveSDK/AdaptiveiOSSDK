@@ -21,18 +21,40 @@ public final class AdaptiveMessaging {
     private init() {
         AdaptiveCore.shared.addLoginListener { [weak self] user in
             guard self != nil else { return }
-            guard let pending = MessagingPreferences.getPendingToken() else { return }
-
-            AdaptiveLogger.log(
-                tag: "Adaptive Messaging",
-                message: "Login detected -- flushing pending token for user \(user.userId)"
-            )
             Task {
-                await MessagingRepository.updateFCMToken(token: pending, userId: user.userId)
-                MessagingPreferences.clearPendingToken()
-                AdaptiveLogger.log(tag: "Adaptive Messaging", message: "Pending token sent successfully")
+                // 1. Flush pending push token
+                if let pending = MessagingPreferences.getPendingToken() {
+                    AdaptiveLogger.log(
+                        tag: "Adaptive Messaging",
+                        message: "Login detected -- flushing pending token for user \(user.userId)"
+                    )
+                    await MessagingRepository.updateFCMToken(token: pending, userId: user.userId)
+                    MessagingPreferences.clearPendingToken()
+                    AdaptiveLogger.log(tag: "Adaptive Messaging", message: "Pending token sent successfully")
+                }
+
+                // 2. Flush pending events one by one
+                let pendingEvents = MessagingPreferences.getPendingEvents()
+                if !pendingEvents.isEmpty {
+                    AdaptiveLogger.log(
+                        tag: "Adaptive Messaging",
+                        message: "Login detected -- flushing \(pendingEvents.count) pending event(s) for user \(user.userId)"
+                    )
+                    MessagingPreferences.clearPendingEvents()
+                    for event in pendingEvents {
+                        await MessagingRepository.sendEvent(
+                            eventName: event.eventName,
+                            body: event.body,
+                            userId: user.userId
+                        )
+                    }
+                }
             }
         }
+    }
+            }
+        }
+    }
     }
 
     // Register or refresh the push token.
@@ -58,6 +80,35 @@ public final class AdaptiveMessaging {
             AdaptiveLogger.log(
                 tag: "Adaptive Messaging",
                 message: "Token stored locally -- will be sent when AdaptiveCore.login() is called"
+            )
+        }
+    }
+
+    /// Send a messaging event to the backend.
+    ///
+    /// - If the user is already logged in, the event is posted immediately.
+    /// - If not, the event is persisted locally and automatically flushed
+    ///   (one by one, in order) the next time `AdaptiveCore.login()` is called.
+    ///
+    /// - Parameters:
+    ///   - eventName: Event identifier (used as the API path segment).
+    ///   - data:      JSON string representing the event body.
+    public func sendEvent(eventName: String, data: String) async {
+        AdaptiveCore.shared.checkInitialization()
+
+        if let currentUser = AdaptiveCore.shared.currentUser {
+            // Fast path: user is authenticated, send straight away.
+            await MessagingRepository.sendEvent(
+                eventName: eventName,
+                body: data,
+                userId: currentUser.userId
+            )
+        } else {
+            // Deferred path: persist the event and wait for login.
+            MessagingPreferences.addPendingEvent(PendingEvent(eventName: eventName, body: data))
+            AdaptiveLogger.log(
+                tag: "Adaptive Messaging",
+                message: "Event '\(eventName)' queued -- will be sent when AdaptiveCore.login() is called"
             )
         }
     }

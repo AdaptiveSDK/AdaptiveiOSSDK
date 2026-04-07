@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.6] – 2026-04-07
+
+### Added
+- **`AdaptiveMessaging.sendEvent(eventName:data:)`** – send arbitrary messaging events. Events are posted immediately when the user is logged in, or automatically queued and flushed (one by one, in order) on the next `AdaptiveCore.login()` call.
+- **`PendingEvent`** – internal `Codable` struct persisted in `UserDefaults` to store events that arrive before login.
+- **`MessagingPreferences`** – extended with `addPendingEvent(_:)`, `getPendingEvents()`, and `clearPendingEvents()` to manage the pre-login event queue.
+- **`MessagingRepository.sendEvent(eventName:body:userId:)`** – posts event payloads to `/events/{eventName}` with `userId` and `deviceId` injected.
+
+### Changed
+- **`AdaptiveMessaging` login listener** – now sequentially flushes both the pending push token **and** all pending events after `AdaptiveCore.login()` is called (token first, then events one by one).
+
+---
+
 ## [1.0.3] – 2026-04-04
 
 ### Added

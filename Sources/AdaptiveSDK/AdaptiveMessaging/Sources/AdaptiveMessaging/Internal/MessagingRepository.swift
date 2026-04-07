@@ -19,7 +19,7 @@ internal class MessagingRepository {
         let deviceId = KeychainHelper.getOrCreateDeviceId()
 
         do {
-            var payload: [String: Any] = [
+            let payload: [String: Any] = [
                 "userId": userId as Any,
                 "deviceId": deviceId,
                 "token": token
@@ -37,6 +37,31 @@ internal class MessagingRepository {
             }
         } catch {
             AdaptiveLogger.log(tag: "Messaging", message: "FCM token encode failed: \(error)")
+        }
+    }
+
+    /// Posts an event payload to `/events/{eventName}` with `userId` and
+    /// `deviceId` injected into the body.
+    static func sendEvent(eventName: String, body: String, userId: String?) async {
+        let deviceId = KeychainHelper.getOrCreateDeviceId()
+
+        do {
+            var json = (try JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any]) ?? [:]
+            json["userId"]   = userId as Any
+            json["deviceId"] = deviceId
+
+            let enriched = try JSONSerialization.data(withJSONObject: json)
+            let enrichedString = String(data: enriched, encoding: .utf8) ?? body
+
+            let result = await AdaptiveCore.shared.post(path: "events/\(eventName)", body: enrichedString)
+            switch result {
+            case .success:
+                AdaptiveLogger.log(tag: "Messaging", message: "Event '\(eventName)' sent successfully")
+            case .failure(let error):
+                AdaptiveLogger.log(tag: "Messaging", message: "Event '\(eventName)' failed: \(error)")
+            }
+        } catch {
+            AdaptiveLogger.log(tag: "Messaging", message: "Event '\(eventName)' encode failed: \(error)")
         }
     }
 }

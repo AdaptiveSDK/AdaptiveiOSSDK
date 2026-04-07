@@ -11,7 +11,8 @@ import Foundation
 internal enum MessagingPreferences {
 
     private static let suite = UserDefaults(suiteName: "com.adaptive.messaging") ?? .standard
-    private static let pendingTokenKey = "pending_push_token"
+    private static let pendingTokenKey  = "pending_push_token"
+    private static let pendingEventsKey = "pending_events"
 
     // Persist a push token that arrived before the user logged in.
     static func savePendingToken(_ token: String) {
@@ -26,6 +27,30 @@ internal enum MessagingPreferences {
     // Clear the pending token once it has been successfully sent to the server.
     static func clearPendingToken() {
         suite.removeObject(forKey: pendingTokenKey)
+    }
+
+    // ── Pending events (pre-login queue) ─────────────────────────────────────
+
+    /// Append a single event to the persisted queue.
+    static func addPendingEvent(_ event: PendingEvent) {
+        var events = getPendingEvents()
+        events.append(event)
+        if let data = try? JSONEncoder().encode(events) {
+            suite.set(data, forKey: pendingEventsKey)
+        }
+    }
+
+    /// Retrieve every event that was queued before the user logged in.
+    static func getPendingEvents() -> [PendingEvent] {
+        guard let data = suite.data(forKey: pendingEventsKey),
+              let events = try? JSONDecoder().decode([PendingEvent].self, from: data)
+        else { return [] }
+        return events
+    }
+
+    /// Clear the persisted queue once all events have been flushed.
+    static func clearPendingEvents() {
+        suite.removeObject(forKey: pendingEventsKey)
     }
 }
 #endif
