@@ -1,5 +1,6 @@
 #if os(iOS)
 import Foundation
+import AdaptiveCore
 
 public final class AdaptiveMessaging {
     nonisolated(unsafe) public static let shared = AdaptiveMessaging()
