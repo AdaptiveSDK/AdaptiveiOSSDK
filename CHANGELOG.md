@@ -5,14 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
-## [1.0.7] – 2026-04-07
+## [1.0.8] – 2026-04-07
 
 ### Fixed
-- **`AdaptiveAnalytics`** – corrected analytics event base path from `moodle/events/` to `events/` to match the current API contract.
+- **`AdaptiveCore`** – exposed `deviceId` as a `public` property so other modules can read the device identifier without depending on the `internal` `KeychainHelper`.
+- **`AdaptiveMessaging`** – `MessagingRepository` now reads `AdaptiveCore.shared.deviceId` instead of calling `KeychainHelper` directly (cross-module visibility fix).
+- **`AdaptiveMessaging`** – added missing `import AdaptiveCore` to `AdaptiveMessaging.swift`.
+- **`AdaptiveMessaging`** – removed extraneous closing braces in `AdaptiveMessaging.swift`.
+- **`AdaptiveAnalytics`** – corrected analytics event base path from `moodle/events/` to `events/`.
 
 ---
 
-## [1.0.6] – 2026-04-07
+## [1.0.7] – 2026-04-07 _(superseded by 1.0.8)_
 
 ### Added
 - **`AdaptiveMessaging.sendEvent(eventName:data:)`** – send arbitrary messaging events. Events are posted immediately when the user is logged in, or automatically queued and flushed (one by one, in order) on the next `AdaptiveCore.login()` call.
