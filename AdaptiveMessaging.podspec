@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target  = '15.0'
 
   s.source_files       = 'Sources/AdaptiveSDK/AdaptiveMessaging/Sources/AdaptiveMessaging/**/*.swift'
-  s.dependency           'AdaptiveCore', '~> 1.0.7'
+  s.dependency           'AdaptiveCore', '~> 1.0'
   s.ios.frameworks     = 'UserNotifications'
 
 end

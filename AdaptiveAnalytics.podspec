@@ -13,6 +13,6 @@ Pod::Spec.new do |s|
   s.ios.deployment_target  = '15.0'
 
   s.source_files = 'Sources/AdaptiveSDK/AdaptiveAnalytics/Sources/AdaptiveAnalytics/**/*.swift'
-  s.dependency     'AdaptiveCore', '~> 1.0.7'
+  s.dependency     'AdaptiveCore', '~> 1.0'
 
 end

@@ -16,8 +16,8 @@ Pod::Spec.new do |s|
   s.swift_version          = '5.9'
   s.ios.deployment_target  = '15.0'
 
-  s.dependency 'AdaptiveCore',      '~> 1.0.7'
-  s.dependency 'AdaptiveAnalytics', '~> 1.0.7'
-  s.dependency 'AdaptiveMessaging', '~> 1.0.7'
+  s.dependency 'AdaptiveCore',      '~> 1.0'
+  s.dependency 'AdaptiveAnalytics', '~> 1.0'
+  s.dependency 'AdaptiveMessaging', '~> 1.0'
 
 end

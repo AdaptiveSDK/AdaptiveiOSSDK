@@ -52,10 +52,6 @@ public final class AdaptiveMessaging {
             }
         }
     }
-            }
-        }
-    }
-    }
 
     // Register or refresh the push token.
     //
