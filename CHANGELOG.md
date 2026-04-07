@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.9] – 2026-04-07
+
+### Changed
+- **`AdaptiveAnalytics`** – version bump to force CocoaPods CDN cache invalidation for consumers on older resolved versions.
+
+---
+
 ## [1.0.8] – 2026-04-07
 
 ### Fixed

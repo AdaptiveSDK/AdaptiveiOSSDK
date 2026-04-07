@@ -1,18 +1,22 @@
 public struct LoginEvent: Encodable {
     public let userId       : Int
-    public let userEmail    : String
-    public let userFullName : String
-    public let productId    : Int
+    public let loginMethod    : LoginMethod
 
     public init(
         userId      : Int,
-        userEmail   : String,
-        userFullName: String,
-        productId   : Int
+        loginMethod   : LoginMethod
     ) {
         self.userId       = userId
-        self.userEmail    = userEmail
-        self.userFullName = userFullName
-        self.productId    = productId
+        self.loginMethod    = loginMethod
     }
+}
+
+
+public enum LoginMethod: Int, Encodable {
+    case emailAndPassword    = 0
+    case google      = 1
+    case facebook  = 2
+    case apple  = 3
+    case x  = 4
+    case phoneAndPassword  = 5
 }
