@@ -16,7 +16,7 @@ internal class MessagingRepository {
     // track the device regardless of authentication state -- the same approach
     // used by WebEngage, FreshChat, and CleverTap.
     static func updateFCMToken(token: String, userId: String?) async {
-        let deviceId = KeychainHelper.getOrCreateDeviceId()
+        let deviceId = AdaptiveCore.shared.deviceId
 
         do {
             let payload: [String: Any] = [
@@ -43,7 +43,7 @@ internal class MessagingRepository {
     /// Posts an event payload to `/events/{eventName}` with `userId` and
     /// `deviceId` injected into the body.
     static func sendEvent(eventName: String, body: String, userId: String?) async {
-        let deviceId = KeychainHelper.getOrCreateDeviceId()
+        let deviceId = AdaptiveCore.shared.deviceId
 
         do {
             var json = (try JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any]) ?? [:]

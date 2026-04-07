@@ -27,6 +27,11 @@ public final class AdaptiveCore {
 
     public var clientId: String? { options?.clientId }
 
+    /// The permanent device identifier for this app installation.
+    /// Generated once (UUID) and persisted in the Keychain so the backend can
+    /// track the device regardless of authentication state.
+    public var deviceId: String { KeychainHelper.getOrCreateDeviceId() }
+
     public func post(path: String, body: String) async -> Result<String, Error> {
         guard let client = httpClient else {
             return .failure(AdaptiveError("not_initialized", "Call AdaptiveCore.initialize() first"))
