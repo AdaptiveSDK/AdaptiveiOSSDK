@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.11] – 2026-04-08
+
+### Changed
+- **`Package.swift`** – lowered SPM iOS minimum deployment target from `.v15` to `.v12`.
+
+---
+
 ## [1.0.10] – 2026-04-07
 
 ### Changed

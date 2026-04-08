@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "AdaptiveSDK",
     platforms: [
-        .iOS(.v15),
+        .iOS(.v12),
         .macOS(.v12)
     ],
     products: [
