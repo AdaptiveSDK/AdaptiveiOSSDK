@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name             = 'AdaptiveAnalytics'
-  s.version          = '1.0.11'
+  s.version          = '1.0.12'
   s.summary          = 'Analytics module for AdaptiveSDK — learning event tracking.'
 
   s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'
@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK.git', :tag => s.version.to_s }
 
   s.swift_version          = '5.9'
-  s.ios.deployment_target  = '15.0'
+  s.ios.deployment_target  = '13.0'
 
   s.source_files = 'Sources/AdaptiveSDK/AdaptiveAnalytics/Sources/AdaptiveAnalytics/**/*.swift'
   s.dependency     'AdaptiveCore', '~> 1.0'

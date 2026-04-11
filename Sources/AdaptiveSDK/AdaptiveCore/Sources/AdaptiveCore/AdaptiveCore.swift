@@ -39,9 +39,9 @@ public final class AdaptiveCore {
         return await client.post(path: path, body: body)
     }
 
-    public func login(userId: String, userName: String, userEmail: String) {
+    public func login(userId: String, userName: String, userEmail: String, phoneNumber: String = "") {
         checkInitialization()
-        let user = AdaptiveUser(userId: userId, userEmail: userEmail, userName: userName)
+        let user = AdaptiveUser(userId: userId, userEmail: userEmail, userName: userName, phoneNumber: phoneNumber)
         currentUser = user
         loginListeners.forEach { $0(user) }
         AdaptiveLogger.log(tag: "AdaptiveCore", message: "User Login successfully")

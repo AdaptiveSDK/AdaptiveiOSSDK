@@ -25,6 +25,7 @@ internal class AnalyticsRepository {
         dict["userId"]         = Int(user.userId) ?? 0
         dict["userEmail"]      = user.userEmail
         dict["userFullName"]   = user.userName
+        dict["phoneNumber"]    = user.phoneNumber
         dict["clientId"]       = AdaptiveCore.shared.clientId ?? ""
         dict["eventTimestamp"] = Int(Date().timeIntervalSince1970)
         return (try? JSONSerialization.data(withJSONObject: dict)) ?? data

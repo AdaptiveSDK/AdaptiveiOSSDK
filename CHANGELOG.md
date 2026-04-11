@@ -5,6 +5,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.12] – 2026-04-12
+
+### Added
+- **`AdaptiveUser.phoneNumber`** – new `String` field on the user model. Passed
+  into `AdaptiveCore.login()` and automatically injected into every analytics
+  event payload via `AnalyticsRepository.injectBaseFields()`.
+- **`AdaptiveAnalytics` auto app-launch event** – instantiating `AdaptiveAnalytics`
+  now fires an `app-launch` event asynchronously via a `Task`, ensuring the
+  event is captured on every cold start without any additional developer
+  integration.
+- **Structured HTTP logging** – `InternalHttpClient` now emits a formatted
+  `→ REQUEST` block (method, full URL, body) before every outgoing call and a
+  `← RESPONSE` block (method, URL, HTTP status code, response body) on
+  completion. All logs remain gated by the existing `AdaptiveLogger.debug` flag.
+
+### Changed
+- **`AdaptiveCore.login(userId:userName:userEmail:phoneNumber:)`** – extended
+  with an optional `phoneNumber: String` parameter (defaults to `""`). Existing
+  call sites without `phoneNumber` continue to compile unchanged.
+- **`AdaptiveAnalytics.logUserPropertiesEvent(data: [String: Any])`** –
+  signature changed from `UserPropertiesEvent` to a plain `[String: Any]`
+  dictionary, letting each integration pass any custom user properties without
+  being constrained to a fixed schema.
+- **`AdaptiveMessaging.showNotification(from:)`** – notification `title` and
+  `message` are now resolved from a nested `notification` dictionary inside the
+  FCM data payload (`json["notification"]["title"]`) when present, falling back
+  to the flat `json["title"]` / `json["description"]` fields. Both payload
+  shapes are supported with no changes required by the consumer.
+
+### Removed
+- **`UserPropertiesEvent`** struct (`AdaptiveAnalytics`) – superseded by the
+  dynamic `[String: Any]` parameter in `logUserPropertiesEvent()`. Migrate call
+  sites by passing a plain dictionary: `["key": value, ...]`.
+
+---
+
 ## [1.0.11] – 2026-04-08
 
 ### Changed

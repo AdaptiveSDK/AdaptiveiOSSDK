@@ -147,12 +147,20 @@ internal final class InternalHttpClient {
             urlRequest.httpBody = body.data(using: .utf8)
         }
 
+        AdaptiveLogger.log(
+            tag: "HttpClient",
+            message: "\n→ REQUEST\n  Method : \(queued.method)\n  URL    : \(queued.url)\n  Body   : \(queued.body ?? "(none)")"
+        )
+
         do {
             let (data, response) = try await session.data(for: urlRequest)
             let httpResponse     = response as! HTTPURLResponse
             let responseBody     = String(data: data, encoding: .utf8) ?? ""
 
-            AdaptiveLogger.log(tag: "HttpClient", message: "\(queued.method) \(queued.url) -> \(httpResponse.statusCode)")
+            AdaptiveLogger.log(
+                tag: "HttpClient",
+                message: "\n← RESPONSE\n  Method : \(queued.method)\n  URL    : \(queued.url)\n  Status : \(httpResponse.statusCode)\n  Body   : \(responseBody)"
+            )
 
             if (200...299).contains(httpResponse.statusCode) {
                 return .success(responseBody)
@@ -160,7 +168,7 @@ internal final class InternalHttpClient {
                 return .failure(HttpClientError.httpError(httpResponse.statusCode, responseBody))
             }
         } catch {
-            AdaptiveLogger.log(tag: "HttpClient", message: "\(queued.method) \(queued.url) failed: \(error)")
+            AdaptiveLogger.log(tag: "HttpClient", message: "Request Exception (\(queued.method) \(queued.url)): \(error)")
             return .failure(error)
         }
     }

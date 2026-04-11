@@ -124,8 +124,18 @@ public final class AdaptiveMessaging {
             showNotitication()
             return
         }
-        let title   = json["title"] as? String ?? "Notification"
-        let message = json["description"] as? String ?? json["body"] as? String ?? ""
+
+        var title   = "Notification"
+        var message = ""
+
+        if let notification = json["notification"] as? [String: Any] {
+            title   = notification["title"]       as? String ?? title
+            message = notification["description"] as? String ?? message
+        } else {
+            title   = json["title"]       as? String ?? title
+            message = json["description"] as? String ?? json["body"] as? String ?? message
+        }
+
         NotificationHandler.shared.showNotification(title: title, message: message)
     }
 
