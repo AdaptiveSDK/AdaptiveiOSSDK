@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 internal final class InternalHttpClient {
 
@@ -19,7 +20,7 @@ internal final class InternalHttpClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest  = 30
         config.timeoutIntervalForResource = 60
-        self.session  = URLSession(configuration: config, delegate: TrustAllCertsDelegate(), delegateQueue: nil)
+        self.session  = URLSession(configuration: config, delegate: CertificatePinningDelegate(), delegateQueue: nil)
         self.queue    = PersistentRequestQueue()
         self.observer = NetworkObserver()
 
@@ -28,9 +29,9 @@ internal final class InternalHttpClient {
             queue           : queue,
             networkObserver : observer,
             executeRequest  : { [session = self.session, apiKey = self.apiKey] queued in
-                let result = await Self.executeNow(queued: queued, session: session, apiKey: apiKey)
-                if case .success = result { return true }
-                return false
+                let (result, retryAfterSec) = await Self.executeNow(queued: queued, session: session, apiKey: apiKey)
+                if case .success = result { return (true, nil) }
+                return (false, retryAfterSec)
             }
         )
         self.processor = processorRef
@@ -95,21 +96,21 @@ internal final class InternalHttpClient {
             }
 
             AdaptiveLogger.log(tag: "HttpClient", message: "Attempt \(attempt)/\(Self.maxInlineRetries) -> \(queued.url)")
-            lastResult = await Self.executeNow(queued: queued, session: session, apiKey: apiKey)
+            let (result429, retryAfterSec) = await Self.executeNow(queued: queued, session: session, apiKey: apiKey)
+            lastResult = result429
 
-            if case .success = lastResult {
-                AdaptiveLogger.log(tag: "HttpClient", message: "Request succeeded on attempt \(attempt)")
-                return lastResult
+            if case .success = lastResult { AdaptiveLogger.log(tag: "HttpClient", message: "Request succeeded"); return lastResult }
+
+            if let retryAfter = retryAfterSec {
+                let waitNs = Self.withJitter(base: UInt64(retryAfter * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: waitNs)
+                continue
             }
 
-            AdaptiveLogger.log(
-                tag: "HttpClient",
-                message: "Attempt \(attempt)/\(Self.maxInlineRetries) failed: \(lastResult)"
-            )
+            AdaptiveLogger.log(tag: "HttpClient", message: "Attempt \(attempt)/\(Self.maxInlineRetries) failed: \(lastResult)")
 
             if attempt < Self.maxInlineRetries {
-                let waitNs = Self.retryDelayNs * UInt64(attempt)
-                AdaptiveLogger.log(tag: "HttpClient", message: "Waiting \(attempt)s before next retry...")
+                let waitNs = Self.withJitter(base: Self.retryDelayNs * UInt64(attempt))
                 try? await Task.sleep(nanoseconds: waitNs)
             }
         }
@@ -123,10 +124,10 @@ internal final class InternalHttpClient {
         queued  : QueuedRequest,
         session : URLSession,
         apiKey  : String
-    ) async -> Result<String, Error> {
+    ) async -> (Result<String, Error>, TimeInterval?) {
 
         guard let url = URL(string: queued.url) else {
-            return .failure(HttpClientError.invalidURL(queued.url))
+            return (.failure(HttpClientError.invalidURL(queued.url)), nil)
         }
 
         var components        = URLComponents(url: url, resolvingAgainstBaseURL: false)!
@@ -135,7 +136,7 @@ internal final class InternalHttpClient {
         components.queryItems = queryItems
 
         guard let finalURL = components.url else {
-            return .failure(HttpClientError.invalidURL(queued.url))
+            return (.failure(HttpClientError.invalidURL(queued.url)), nil)
         }
 
         var urlRequest        = URLRequest(url: finalURL)
@@ -163,35 +164,49 @@ internal final class InternalHttpClient {
             )
 
             if (200...299).contains(httpResponse.statusCode) {
-                return .success(responseBody)
+                return (.success(responseBody), nil)
+            } else if httpResponse.statusCode == 429 {
+                let retryAfterSec = httpResponse.value(forHTTPHeaderField: "Retry-After").flatMap { Double($0) } ?? 60.0
+                return (.failure(HttpClientError.httpError(429, responseBody)), retryAfterSec)
             } else {
-                return .failure(HttpClientError.httpError(httpResponse.statusCode, responseBody))
+                return (.failure(HttpClientError.httpError(httpResponse.statusCode, responseBody)), nil)
             }
         } catch {
             AdaptiveLogger.log(tag: "HttpClient", message: "Request Exception (\(queued.method) \(queued.url)): \(error)")
-            return .failure(error)
+            return (.failure(error), nil)
         }
     }
 }
 
-// MARK: - SSL (dev-only: accepts beta server's self-signed / untrusted cert)
+    private static func withJitter(base: UInt64) -> UInt64 {
+        let factor = Double.random(in: 0.8...1.2)
+        return UInt64(Double(base) * factor)
+    }
+}
 
-// ⚠️ DEVELOPMENT ONLY — remove or gate behind a DEBUG flag before shipping to production.
-private final class TrustAllCertsDelegate: NSObject, URLSessionDelegate {
-    func urlSession(
-        _ session: URLSession,
-        didReceive challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-    ) {
+// MARK: - Certificate Pinning
+// TODO: Replace pinnedHashes with real SHA-256 SPKI fingerprints before shipping.
+private final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
+    private let pinnedHashes: Set<String> = [
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+    ]
+    private static let rsaHeader = Data([0x30,0x82,0x01,0x22,0x30,0x0d,0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00,0x03,0x82,0x01,0x0f,0x00])
+    private static let ecHeader  = Data([0x30,0x59,0x30,0x13,0x06,0x07,0x2a,0x86,0x48,0xce,0x3d,0x02,0x01,0x06,0x08,0x2a,0x86,0x48,0xce,0x3d,0x03,0x01,0x07,0x03,0x42,0x00])
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              let serverTrust = challenge.protectionSpace.serverTrust else {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-        completionHandler(.useCredential, URLCredential(trust: serverTrust))
+              let serverTrust = challenge.protectionSpace.serverTrust else { completionHandler(.performDefaultHandling, nil); return }
+        var cfError: CFError?
+        guard SecTrustEvaluateWithError(serverTrust, &cfError) else { completionHandler(.cancelAuthenticationChallenge, nil); return }
+        guard let leafCert = SecTrustGetCertificateAtIndex(serverTrust, 0), let publicKey = SecCertificateCopyKey(leafCert), let keyData = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else { completionHandler(.cancelAuthenticationChallenge, nil); return }
+        let attrs = SecKeyCopyAttributes(publicKey) as? [String: Any]
+        let isRSA = (attrs?[kSecAttrKeyType as String] as? String) == (kSecAttrKeyTypeRSA as String)
+        let spki  = (isRSA ? Self.rsaHeader : Self.ecHeader) + keyData
+        let hash  = Data(SHA256.hash(data: spki)).base64EncodedString()
+        if pinnedHashes.contains(hash) { completionHandler(.useCredential, URLCredential(trust: serverTrust)) }
+        else { completionHandler(.cancelAuthenticationChallenge, nil) }
     }
 }
-
 // MARK: - Errors
 
 internal enum HttpClientError: LocalizedError {

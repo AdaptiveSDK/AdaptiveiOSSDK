@@ -5,7 +5,7 @@ internal final class QueueProcessor: @unchecked Sendable {
 
     private let queue          : PersistentRequestQueue
     private let networkObserver: NetworkObserver
-    private let executeRequest : (QueuedRequest) async -> Bool
+    private let executeRequest : (QueuedRequest) async -> (Bool, TimeInterval?)
 
     private var cancellables        = Set<AnyCancellable>()
     private var retryTask           : Task<Void, Never>?
@@ -16,7 +16,7 @@ internal final class QueueProcessor: @unchecked Sendable {
     init(
         queue           : PersistentRequestQueue,
         networkObserver : NetworkObserver,
-        executeRequest  : @escaping (QueuedRequest) async -> Bool
+        executeRequest  : @escaping (QueuedRequest) async -> (Bool, TimeInterval?)
     ) {
         self.queue           = queue
         self.networkObserver = networkObserver
@@ -82,11 +82,14 @@ internal final class QueueProcessor: @unchecked Sendable {
                 "Retrying [\(request.id)] attempt=\(request.retryCount + 1)"
             )
 
-            let success = await executeRequest(request)
+            let (success, retryAfterSec) = await executeRequest(request)
 
             if success {
                 logger.debug("QueueProcessor", "Request [\(request.id)] succeeded on retry.")
                 queue.remove(requestId: request.id)
+            } else if let retryAfter = retryAfterSec {
+                let waitNs = withJitter(base: UInt64(retryAfter * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: waitNs)
             } else {
                 queue.incrementRetry(requestId: request.id)
             }
@@ -95,5 +98,10 @@ internal final class QueueProcessor: @unchecked Sendable {
 
     private func backoff(attempt: Int) -> UInt64 {
         return UInt64(2_000 * pow(2.0, Double(attempt)))
+    }
+
+    private func withJitter(base: UInt64) -> UInt64 {
+        let factor = Double.random(in: 0.8...1.2)
+        return UInt64(Double(base) * factor)
     }
 }

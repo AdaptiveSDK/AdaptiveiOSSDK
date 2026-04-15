@@ -5,7 +5,6 @@ let package = Package(
     name: "AdaptiveSDK",
     platforms: [
         .iOS(.v12),
-        .macOS(.v12)
     ],
     products: [
         .library(name: "AdaptiveCore",      targets: ["AdaptiveCore"]),

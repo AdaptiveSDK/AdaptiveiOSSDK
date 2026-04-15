@@ -39,9 +39,18 @@ public final class AdaptiveCore {
         return await client.post(path: path, body: body)
     }
 
-    public func login(userId: String, userName: String, userEmail: String, phoneNumber: String = "") {
+    public func login(userId: String, userName: String, userEmail: String, phoneNumber: String = "", userGrade: UserGrade? = nil) {
         checkInitialization()
-        let user = AdaptiveUser(userId: userId, userEmail: userEmail, userName: userName, phoneNumber: phoneNumber)
+        // Guard: listeners must only fire once per session.
+        // If a user is already logged in, skip the broadcast and warn.
+        guard currentUser == nil else {
+            AdaptiveLogger.log(tag: "AdaptiveCore", message: "login() called while a session is already active – ignoring. Call logout() first.")
+            return
+        }
+        if httpClient == nil {
+            httpClient = InternalHttpClient(debug: options?.debug ?? false)
+        }
+        let user = AdaptiveUser(userId: userId, userEmail: userEmail, userName: userName, phoneNumber: phoneNumber, userGrade: userGrade)
         currentUser = user
         loginListeners.forEach { $0(user) }
         AdaptiveLogger.log(tag: "AdaptiveCore", message: "User Login successfully")
@@ -50,6 +59,8 @@ public final class AdaptiveCore {
     public func logout() {
         checkInitialization()
         httpClient?.clearQueue()
+        httpClient?.shutdown()
+        httpClient = nil
         currentUser = nil
         AdaptiveLogger.log(tag: "AdaptiveCore", message: "User Logout successfully")
     }
