@@ -176,7 +176,6 @@ internal final class InternalHttpClient {
             return (.failure(error), nil)
         }
     }
-}
 
     private static func withJitter(base: UInt64) -> UInt64 {
         let factor = Double.random(in: 0.8...1.2)
