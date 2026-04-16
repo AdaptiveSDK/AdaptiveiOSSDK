@@ -22,7 +22,7 @@ internal class AnalyticsRepository {
 
     private func injectBaseFields(user: AdaptiveUser, data: Data) -> Data {
         var dict = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        dict["userId"]         = Int(user.userId) as Any? ?? user.userId
+        dict["userId"]         = user.userId
         dict["userEmail"]      = user.userEmail
         dict["userFullName"]   = user.userName
         dict["phoneNumber"]    = user.phoneNumber

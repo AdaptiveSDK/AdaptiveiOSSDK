@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name             = 'AdaptiveCore'
-  s.version          = '1.0.14'
+  s.version          = '1.0.19'
   s.summary          = 'Core module for AdaptiveSDK — initialization, user session, networking & offline queue.'
 
   s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'

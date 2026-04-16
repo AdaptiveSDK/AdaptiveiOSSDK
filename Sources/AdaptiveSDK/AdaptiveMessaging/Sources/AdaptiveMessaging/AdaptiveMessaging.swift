@@ -5,7 +5,7 @@ import AdaptiveCore
 public final class AdaptiveMessaging {
     nonisolated(unsafe) public static let shared = AdaptiveMessaging()
 
-    // ── Store-and-forward (pre-login push token) ──────────────────────────────
+    // ── Store-and-forward (pre-login push token) ────────────────────────────────────
     //
     // Industry pattern (WebEngage, FreshChat, CleverTap):
     //   1. Push token arrives at any point -- even before the user logs in.
@@ -17,7 +17,7 @@ public final class AdaptiveMessaging {
     //
     // The loginListener is registered once in init and lives for the lifetime
     // of the singleton, so no retain-cycle issues occur.
-    // ─────────────────────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────────
 
     private init() {
         AdaptiveCore.shared.addLoginListener { [weak self] user in
@@ -67,6 +67,12 @@ public final class AdaptiveMessaging {
     //   AdaptiveCore.login() is called, exactly as FreshChat / WebEngage behave.
     public func updateFCMToken(token: String) async {
         AdaptiveCore.shared.checkInitialization()
+
+        // Always persist the latest token in AdaptiveCore so that other modules
+        // (e.g. AdaptiveAnalytics) can read it without a direct dependency on
+        // AdaptiveMessaging. This survives app restarts and is the single
+        // source-of-truth for the most-recent FCM token across the SDK.
+        AdaptiveCore.shared.saveFcmToken(token)
 
         if let currentUser = AdaptiveCore.shared.currentUser {
             // Fast path: user is authenticated, send straight away.
