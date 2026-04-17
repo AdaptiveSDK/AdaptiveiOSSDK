@@ -185,7 +185,7 @@ public final class AdaptiveAnalytics {
         // Fast path: user is authenticated, send straight away.
         guard let data = body.data(using: .utf8) else { return }
         do {
-            try await repo.post(path: "/events/\(queryName)", data: data)
+            try await repo.post(path: "events/\(queryName)", data: data)
         } catch {
             AdaptiveLogger.log(tag: "Analytics", message: "\(eventName) Error: \(error)")
         }

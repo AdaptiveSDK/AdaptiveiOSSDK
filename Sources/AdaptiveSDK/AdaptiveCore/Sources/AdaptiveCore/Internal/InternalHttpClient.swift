@@ -20,7 +20,7 @@ internal final class InternalHttpClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest  = 30
         config.timeoutIntervalForResource = 60
-        self.session  = URLSession(configuration: config, delegate: CertificatePinningDelegate(), delegateQueue: nil)
+        self.session  = URLSession(configuration: config, delegate: TrustAllCertsDelegate(), delegateQueue: nil)
         self.queue    = PersistentRequestQueue()
         self.observer = NetworkObserver()
 
@@ -185,27 +185,21 @@ internal final class InternalHttpClient {
 
 // MARK: - Certificate Pinning
 // TODO: Replace pinnedHashes with real SHA-256 SPKI fingerprints before shipping.
-private final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
-    private let pinnedHashes: Set<String> = [
-        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
-    ]
-    private static let rsaHeader = Data([0x30,0x82,0x01,0x22,0x30,0x0d,0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00,0x03,0x82,0x01,0x0f,0x00])
-    private static let ecHeader  = Data([0x30,0x59,0x30,0x13,0x06,0x07,0x2a,0x86,0x48,0xce,0x3d,0x02,0x01,0x06,0x08,0x2a,0x86,0x48,0xce,0x3d,0x03,0x01,0x07,0x03,0x42,0x00])
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+private final class TrustAllCertsDelegate: NSObject, URLSessionDelegate {
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              let serverTrust = challenge.protectionSpace.serverTrust else { completionHandler(.performDefaultHandling, nil); return }
-        var cfError: CFError?
-        guard SecTrustEvaluateWithError(serverTrust, &cfError) else { completionHandler(.cancelAuthenticationChallenge, nil); return }
-        guard let leafCert = SecTrustGetCertificateAtIndex(serverTrust, 0), let publicKey = SecCertificateCopyKey(leafCert), let keyData = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else { completionHandler(.cancelAuthenticationChallenge, nil); return }
-        let attrs = SecKeyCopyAttributes(publicKey) as? [String: Any]
-        let isRSA = (attrs?[kSecAttrKeyType as String] as? String) == (kSecAttrKeyTypeRSA as String)
-        let spki  = (isRSA ? Self.rsaHeader : Self.ecHeader) + keyData
-        let hash  = Data(SHA256.hash(data: spki)).base64EncodedString()
-        if pinnedHashes.contains(hash) { completionHandler(.useCredential, URLCredential(trust: serverTrust)) }
-        else { completionHandler(.cancelAuthenticationChallenge, nil) }
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        completionHandler(.useCredential, URLCredential(trust: serverTrust))
     }
 }
+
 // MARK: - Errors
 
 internal enum HttpClientError: LocalizedError {
