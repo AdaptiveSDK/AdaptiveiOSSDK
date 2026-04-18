@@ -1,7 +1,7 @@
 #if os(iOS)
 import UserNotifications
 
-final class NotificationHandler {
+final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
     
     static let shared = NotificationHandler()
     private var channelCreated = false
@@ -9,7 +9,19 @@ final class NotificationHandler {
     private let channelName = "Adaptive Notifications"
     private let channelDesc = "Notifications for adaptive messages"
     
-    private init() {}
+    private override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+    }
+    
+    // Show banner/sound/badge even when app is in the foreground
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
     
     private func createNotificationCategory() {
         guard !channelCreated else { return }
@@ -42,7 +54,7 @@ final class NotificationHandler {
             
             let randomId = UUID().uuidString
             
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1.0, repeats: false)
             
             let request = UNNotificationRequest(identifier: randomId, content: content, trigger: trigger)
             

@@ -127,7 +127,6 @@ public final class AdaptiveMessaging {
     public func showNotification(from payload: String) {
         guard let jsonData = payload.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
-            showNotitication()
             return
         }
 
@@ -142,11 +141,10 @@ public final class AdaptiveMessaging {
             message = json["description"] as? String ?? json["body"] as? String ?? message
         }
 
+        guard !message.isEmpty else { return }
         NotificationHandler.shared.showNotification(title: title, message: message)
     }
 
-    public func showNotitication() {
-        NotificationHandler.shared.showNotification(title: "Hello", message: "This is an adaptive message")
-    }
+ 
 }
 #endif
