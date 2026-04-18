@@ -40,7 +40,7 @@ internal class MessagingRepository {
         }
     }
 
-    /// Posts an event payload to `/events/{eventName}` with `userId` and
+    /// Posts an event payload to `events/{eventName}` with `userId` and
     /// `deviceId` injected into the body.
     static func sendEvent(eventName: String, body: String, userId: String?) async {
         let deviceId = AdaptiveCore.shared.deviceId

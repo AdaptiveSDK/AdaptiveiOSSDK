@@ -73,7 +73,7 @@ public final class AdaptiveCore {
             ]
             if let g = userGrade { dict["UserGrade"] = g.rawValue }
             let body = String(data: (try? JSONSerialization.data(withJSONObject: dict)) ?? Data(), encoding: .utf8) ?? "{}"
-            _ = await self.post(path: "/events/app-launch", body: body)
+            _ = await self.post(path: "events/app-launch", body: body)
         }
     }
 

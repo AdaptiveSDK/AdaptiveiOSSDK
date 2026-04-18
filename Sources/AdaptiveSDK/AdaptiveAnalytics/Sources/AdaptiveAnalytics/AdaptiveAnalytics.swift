@@ -37,7 +37,7 @@ public final class AdaptiveAnalytics {
                     for event in pendingEvents {
                         guard let data = event.body.data(using: .utf8) else { continue }
                         do {
-                            try await self.repo.post(path: "/events/\(event.queryName)", data: data)
+                            try await self.repo.post(path: "events/\(event.queryName)", data: data)
                             AdaptiveLogger.log(tag: "Analytics", message: "Pending event '\(event.queryName)' sent successfully")
 
                             // After a registration event is flushed, send the
@@ -93,7 +93,7 @@ public final class AdaptiveAnalytics {
               let regBody = String(data: regData, encoding: .utf8) else { return }
         do {
             guard let bodyData = regBody.data(using: .utf8) else { return }
-            try await repo.post(path: "/events/registration", data: bodyData)
+            try await repo.post(path: "events/registration", data: bodyData)
             AdaptiveLogger.log(tag: "Analytics", message: "Registration Event sent successfully")
             await postDeviceTokenAfterRegistration(userId: currentUser.userId)
         } catch {
