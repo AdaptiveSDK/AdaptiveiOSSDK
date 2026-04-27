@@ -26,7 +26,9 @@ internal class AnalyticsRepository {
         dict["userEmail"]      = user.userEmail
         dict["userFullName"]   = user.userName
         dict["phoneNumber"]    = user.phoneNumber
-        if let grade = user.userGrade { dict["UserGrade"] = grade.rawValue }
+        if let grade  = user.userGrade  { dict["UserGrade"] = grade.rawValue }
+        if let gender = user.userGender { dict["Gender"]   = gender.rawValue }
+        if let school = user.userSchool { dict["School"] = school.rawValue }
         dict["clientId"]       = AdaptiveCore.shared.clientId ?? ""
         dict["eventTimestamp"] = Int(Date().timeIntervalSince1970)
         return (try? JSONSerialization.data(withJSONObject: dict)) ?? data

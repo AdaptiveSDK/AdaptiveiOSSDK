@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name             = 'AdaptiveAnalytics'
-  s.version          = '1.0.22'
+  s.version          = '1.0.23'
   s.summary          = 'Analytics module for AdaptiveSDK — learning event tracking.'
 
   s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'

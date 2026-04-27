@@ -22,11 +22,28 @@ public final class AdaptiveAnalytics {
 
     private let repo = AnalyticsRepository()
 
+    /// Eagerly initializes the Analytics module so that its login listener is
+    /// registered with `AdaptiveCore` **before** any `login()` call happens.
+    ///
+    /// Call this once during app startup (e.g. from your Flutter plugin or
+    /// AppDelegate.didFinishLaunching). Idempotent.
+    ///
+    /// Without this, `app-launch` will not fire for returning users who only
+    /// call `AdaptiveCore.shared.login(...)` and never invoke an analytics
+    /// method.
+    public static func initialize() {
+        _ = shared // triggers init()
+        AdaptiveLogger.log(tag: "Analytics", message: "Analytics module initialized")
+    }
+
     private init() {
         AdaptiveCore.shared.addLoginListener { [weak self] user in
             guard let self = self else { return }
             Task {
-                // Flush any pre-login pending events (in order)
+                // 1. Fire app-launch immediately after login
+                await self.logAppLaunchEvent()
+
+                // 2. Flush any pre-login pending events (in order)
                 let pendingEvents = AnalyticsPreferences.getPendingEvents()
                 if !pendingEvents.isEmpty {
                     AdaptiveLogger.log(
@@ -40,11 +57,11 @@ public final class AdaptiveAnalytics {
                             try await self.repo.post(path: "events/\(event.queryName)", data: data)
                             AdaptiveLogger.log(tag: "Analytics", message: "Pending event '\(event.queryName)' sent successfully")
 
-                            // After a registration event is flushed, send the
-                            // saved FCM token to /device-tokens so the backend
-                            // can link the device to the newly registered user.
+                            // After a registration event is flushed, notify
+                            // listeners (e.g. Messaging) so they can react
+                            // (e.g. post the FCM token for the new user).
                             if event.queryName == "registration" {
-                                await self.postDeviceTokenAfterRegistration(userId: user.userId)
+                                AdaptiveCore.shared.notifyRegistration(user)
                             }
                         } catch {
                             AdaptiveLogger.log(tag: "Analytics", message: "Pending event '\(event.queryName)' failed: \(error)")
@@ -95,7 +112,7 @@ public final class AdaptiveAnalytics {
             guard let bodyData = regBody.data(using: .utf8) else { return }
             try await repo.post(path: "events/registration", data: bodyData)
             AdaptiveLogger.log(tag: "Analytics", message: "Registration Event sent successfully")
-            await postDeviceTokenAfterRegistration(userId: currentUser.userId)
+            AdaptiveCore.shared.notifyRegistration(currentUser)
         } catch {
             AdaptiveLogger.log(tag: "Analytics", message: "Registration Event Error: \(error)")
         }
@@ -105,10 +122,11 @@ public final class AdaptiveAnalytics {
         await logEvent(queryName: "login", event: data, eventName: "Login Event")
     }
 
-    public func logUserPropertiesEvent(data: [String: Any]) async {
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: data),
+    public func setUserProperties(data: [String: Any]) async {
+        let wrapped: [String: Any] = ["json": data]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: wrapped),
               let body = String(data: jsonData, encoding: .utf8) else { return }
-        await logEventRaw(queryName: "user-properties", body: body, eventName: "User Properties Event")
+        await logEventRaw(queryName: "set-user-info", body: body, eventName: "Set User Info Event")
     }
 
     public func logGradeChangeEvent(data: GradeChangeEvent) async {
@@ -148,18 +166,6 @@ public final class AdaptiveAnalytics {
     }
 
     // MARK: - Private Helpers
-
-    // ── Post-registration device-token helper ────────────────────────────────────────────
-    /// Delegates to `AdaptiveCore.shared.postDeviceToken(userId:)` which reads
-    /// the latest FCM token and posts it to `/device-tokens`.
-    ///
-    /// The core helper includes a session-level dedup guard, so if
-    /// `AdaptiveMessaging`'s login listener already posted the same token for
-    /// the same user, this call becomes a no-op — no duplicate network calls.
-    private func postDeviceTokenAfterRegistration(userId: String) async {
-        _ = await AdaptiveCore.shared.postDeviceToken(userId: userId)
-    }
-    // ───────────────────────────────────────────────────────────────────────────
 
     /// Generic helper: encodes an `Encodable` event then delegates to `logEventRaw`.
     private func logEvent<T: Encodable>(queryName: String, event: T, eventName: String) async {

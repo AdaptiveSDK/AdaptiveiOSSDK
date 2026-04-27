@@ -19,6 +19,24 @@ public final class AdaptiveMessaging {
     // of the singleton, so no retain-cycle issues occur.
     // ───────────────────────────────────────────────────────────────────────────
 
+    /// Eagerly initializes the Messaging module so that its login and
+    /// registration listeners are registered with `AdaptiveCore` **before**
+    /// any `login()` or registration event happens.
+    ///
+    /// Call this once during app startup. Idempotent.
+    public static func initialize() {
+        _ = shared // triggers init()
+        AdaptiveLogger.log(tag: "Adaptive Messaging", message: "Messaging module initialized")
+    }
+
+    // ── Registration listener state ───────────────────────────────────────────────────
+    // Triggered by Analytics after a registration event is confirmed. Posts
+    // the latest FCM token to link the newly-registered user to this device.
+    // A session-level dedup guard prevents double-posting when login-flush
+    // also runs for the same user+token.
+    private var lastPostedDeviceToken: (userId: String, token: String)? = nil
+    // ─────────────────────────────────────────────────────────────────────────
+
     private init() {
         AdaptiveCore.shared.addLoginListener { [weak self] user in
             guard self != nil else { return }
@@ -50,6 +68,33 @@ public final class AdaptiveMessaging {
                         )
                     }
                 }
+            }
+        }
+
+        // Registration observer: post FCM token for newly registered user.
+        AdaptiveCore.shared.addRegistrationListener { [weak self] user in
+            guard let self = self else { return }
+            guard let token = AdaptiveCore.shared.getLatestFcmToken() else {
+                AdaptiveLogger.log(
+                    tag: "Adaptive Messaging",
+                    message: "Registration detected but no FCM token yet – will flush on next updateFCMToken"
+                )
+                return
+            }
+            if let last = self.lastPostedDeviceToken, last.userId == user.userId, last.token == token {
+                AdaptiveLogger.log(
+                    tag: "Adaptive Messaging",
+                    message: "Device token already posted for user \(user.userId) – skipping duplicate"
+                )
+                return
+            }
+            Task { [weak self] in
+                await MessagingRepository.updateFCMToken(token: token, userId: user.userId)
+                self?.lastPostedDeviceToken = (user.userId, token)
+                AdaptiveLogger.log(
+                    tag: "Adaptive Messaging",
+                    message: "FCM token linked to user \(user.userId) after registration"
+                )
             }
         }
     }

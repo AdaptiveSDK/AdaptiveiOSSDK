@@ -2,6 +2,7 @@ import Foundation
 import Network
 import Combine
 
+@available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
 internal final class NetworkObserver: @unchecked Sendable {
 
     private let subject        = CurrentValueSubject<Bool, Never>(false)

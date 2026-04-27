@@ -1,6 +1,49 @@
 import Foundation
 import CryptoKit
 
+// MARK: - Request Serializer
+
+/// Serializes async operations so they execute one at a time.
+/// Uses a serial OperationQueue + DispatchSemaphore — fully compatible with
+/// the project's iOS 12 deployment target. No Task stored properties, no
+/// actor, no CheckedContinuation.
+///
+/// How it works:
+///   1. Each `serialize` call enqueues a blocking NSBlockOperation on a
+///      serial queue (maxConcurrentOperationCount = 1), so operations never
+///      overlap.
+///   2. Inside the operation a DispatchSemaphore blocks the queue thread
+///      until the async `work` closure signals completion.
+///   3. The caller resumes via an UnsafeContinuation once the result is ready.
+@available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+private final class RequestSerializer {
+
+    private let serialQueue: OperationQueue = {
+        let q = OperationQueue()
+        q.maxConcurrentOperationCount = 1
+        q.name = "com.adaptivesdk.http-serializer"
+        return q
+    }()
+
+    func serialize<T>(_ work: @escaping () async -> T) async -> T {
+        await withUnsafeContinuation { continuation in
+            serialQueue.addOperation {
+                let semaphore = DispatchSemaphore(value: 0)
+                // Mutable captured state — safe because the semaphore ensures
+                // the write completes before the read below.
+                var result: T?
+                Task {
+                    result = await work()
+                    semaphore.signal()
+                }
+                semaphore.wait()
+                continuation.resume(returning: result!)
+            }
+        }
+    }
+}
+
+@available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
 internal final class InternalHttpClient {
 
     internal static let baseURL = "https://beta.adlearning.api.aladwaa.com/"
@@ -12,6 +55,9 @@ internal final class InternalHttpClient {
     private let queue    : PersistentRequestQueue
     private let observer : NetworkObserver
     private let processor: QueueProcessor
+
+    /** Ensures requests are dispatched one at a time (no concurrent HTTP calls). */
+    private let requestSerializer = RequestSerializer()
 
     private static let maxInlineRetries = 3
     private static let retryDelayNs: UInt64 = 1_000_000_000 // 1 s per attempt
@@ -50,7 +96,9 @@ internal final class InternalHttpClient {
             return .failure(HttpClientError.offline)
         }
 
-        let result = await executeWithRetry(queued: queued)
+        let result = await requestSerializer.serialize {
+            await self.executeWithRetry(queued: queued)
+        }
 
         if case .failure = result {
             AdaptiveLogger.log(tag: "HttpClient", message: "All retries exhausted - queuing POST \(fullURL)")
@@ -69,7 +117,9 @@ internal final class InternalHttpClient {
             return .failure(HttpClientError.offline)
         }
 
-        return await executeWithRetry(queued: queued)
+        return await requestSerializer.serialize {
+            await self.executeWithRetry(queued: queued)
+        }
     }
 
     func clearQueue() {

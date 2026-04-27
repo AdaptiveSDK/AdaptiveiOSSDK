@@ -10,6 +10,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.23] – 2026-04-27
+
+### Changed
+- Unified version bump to `1.0.23` for all CocoaPods modules (`AdaptiveCore`, `AdaptiveAnalytics`, `AdaptiveMessaging`, `AdaptiveSDK`) and SPM tag publishing.
+
+---
+
 ## [1.0.22] – 2026-04-19
 
 ### Changed
