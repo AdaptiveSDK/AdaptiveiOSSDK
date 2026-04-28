@@ -16,7 +16,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
 
-VERSION="1.0.23"
+VERSION="1.0.24"
 
 echo "══════════════════════════════════════════"
 echo " Adaptive iOS SDK v${VERSION} – publish to CocoaPods"

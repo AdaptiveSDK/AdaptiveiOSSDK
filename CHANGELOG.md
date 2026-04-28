@@ -10,6 +10,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Version
 
 ---
 
+## [1.0.24] – 2026-04-28
+- Maintenance release and dependency updates.
+
 ## [1.0.23] – 2026-04-27
 
 ### Changed
