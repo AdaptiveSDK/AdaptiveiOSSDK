@@ -4,30 +4,16 @@ import AdaptiveCore
 
 internal class MessagingRepository {
 
-    // Sends (or refreshes) the push token for this device.
-    //
-    // Parameters:
-    //   token  -- current APNs / FCM push token.
-    //   userId -- the authenticated user ID, or nil when the token is being
-    //             registered before the user has logged in (pre-login
-    //             store-and-forward pattern).
-    //
-    // The deviceId is always resolved from KeychainHelper so the backend can
-    // track the device regardless of authentication state -- the same approach
-    // used by WebEngage, FreshChat, and CleverTap.
     static func updateFCMToken(token: String, userId: String?) async {
         let deviceId = AdaptiveCore.shared.deviceId
-
         do {
             let payload: [String: Any] = [
                 "userId": userId as Any,
                 "deviceId": deviceId,
                 "token": token
             ]
-
             let body = try JSONSerialization.data(withJSONObject: payload)
             let bodyString = String(data: body, encoding: .utf8) ?? "{}"
-
             let result = await AdaptiveCore.shared.post(path: "device-tokens", body: bodyString)
             switch result {
             case .success:
@@ -40,28 +26,29 @@ internal class MessagingRepository {
         }
     }
 
-    /// Posts an event payload to `events/{eventName}` with `userId` and
-    /// `deviceId` injected into the body.
-    static func sendEvent(eventName: String, body: String, userId: String?) async {
+    /// Posts notification status to /notification-status.
+    /// Fires immediately — no login required. Always includes device_id,
+    /// optionally includes user_id if a user is currently authenticated.
+    static func sendNotificationStatus(
+        notificationId: String,
+        status: String
+    ) async {
         let deviceId = AdaptiveCore.shared.deviceId
-
+        var payload: [String: Any] = [
+            "eventType": status,
+        ]
         do {
-            var json = (try JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any]) ?? [:]
-            json["userId"]   = userId as Any
-            json["deviceId"] = deviceId
-
-            let enriched = try JSONSerialization.data(withJSONObject: json)
-            let enrichedString = String(data: enriched, encoding: .utf8) ?? body
-
-            let result = await AdaptiveCore.shared.post(path: "events/\(eventName)", body: enrichedString)
+            let body = try JSONSerialization.data(withJSONObject: payload)
+            let bodyString = String(data: body, encoding: .utf8) ?? "{}"
+            let result = await AdaptiveCore.shared.post(path: "/messages/\(notificationId)/events", body: bodyString, messagingService: true)
             switch result {
             case .success:
-                AdaptiveLogger.log(tag: "Messaging", message: "Event '\(eventName)' sent successfully")
+                AdaptiveLogger.log(tag: "Messaging", message: "Notification status '\(status)' sent for id=\(notificationId)")
             case .failure(let error):
-                AdaptiveLogger.log(tag: "Messaging", message: "Event '\(eventName)' failed: \(error)")
+                AdaptiveLogger.log(tag: "Messaging", message: "Notification status '\(status)' failed: \(error)")
             }
         } catch {
-            AdaptiveLogger.log(tag: "Messaging", message: "Event '\(eventName)' encode failed: \(error)")
+            AdaptiveLogger.log(tag: "Messaging", message: "Notification status encode failed: \(error)")
         }
     }
 }

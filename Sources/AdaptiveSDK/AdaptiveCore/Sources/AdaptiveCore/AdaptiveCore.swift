@@ -62,14 +62,14 @@ public final class AdaptiveCore {
     /// track the device regardless of authentication state.
     public var deviceId: String { KeychainHelper.getOrCreateDeviceId() }
 
-    public func post(path: String, body: String) async -> Result<String, Error> {
+    public func post(path: String, body: String, messagingService: Bool = false) async -> Result<String, Error> {
         guard #available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *) else {
             return .failure(AdaptiveError("unsupported_os", "AdaptiveCore requires iOS 13 or later"))
         }
         guard let client = httpClient else {
             return .failure(AdaptiveError("not_initialized", "Call AdaptiveCore.initialize() first"))
         }
-        return await client.post(path: path, body: body)
+        return await client.post(path: path, body: body, messagingService: messagingService)
     }
 
     public func login(user : AdaptiveUser) {

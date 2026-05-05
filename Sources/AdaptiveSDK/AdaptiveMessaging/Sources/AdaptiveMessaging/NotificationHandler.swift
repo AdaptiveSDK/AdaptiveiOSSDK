@@ -38,7 +38,7 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
     // MARK: - Show
 
     func showNotification(title: String, message: String) {
-        showNotification(title: title, message: message, notificationId: nil, journeyId: nil, actionUrl: nil)
+        showNotification(title: title, message: message, notificationId: nil, actionUrl: nil)
     }
 
     func showNotification(
@@ -94,7 +94,7 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         let notificationId = info[kNotificationId] as? String
 
         if let nid = notificationId, !nid.isEmpty {
-            AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: "VIEWED")
+            AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: NotificationStatus.view.rawValue)
             AdaptiveLogger.log(tag: "NotificationHandler", message: "Notification VIEWED (foreground) id=\(nid)")
         }
 
@@ -118,13 +118,13 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         switch response.actionIdentifier {
         case UNNotificationDismissActionIdentifier:
             if let nid = notificationId, !nid.isEmpty {
-                AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: "DISMISSED")
+                AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: NotificationStatus.dismiss.rawValue)
                 AdaptiveLogger.log(tag: "NotificationHandler", message: "Notification DISMISSED id=\(nid)")
             }
 
         default: // UNNotificationDefaultActionIdentifier == tap
             if let nid = notificationId, !nid.isEmpty {
-                AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: "CLICKED")
+                    AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: NotificationStatus.click.rawValue)
                 AdaptiveLogger.log(tag: "NotificationHandler", message: "Notification CLICKED id=\(nid)")
             }
             if let urlString = actionUrl, let url = URL(string: urlString) {

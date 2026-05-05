@@ -50,7 +50,10 @@ internal final class InternalHttpClient {
 
     // TODO: move to a server-side token exchange before production
     private let apiKey   : String = "-v1DJgexVnhfpdRw0v3ZUaszqwg_GOf-tdp282u-B7g3AzFugPf__Q=="
-    private let baseURL  : String = InternalHttpClient.baseURL
+    private let baseURL          : String = InternalHttpClient.baseURL
+
+    private let messagingBaseURL  : String = "https://beta.adlearningmessaging.api.aladwaa.com/"
+    private let messagingApiKey   : String = "IMulRu1Sbh7_zYc47JYBy8ZUdrWDNPOIB-ZY8-6P7ew_AzFuQnkkDw=="
     private let session  : URLSession
     private let queue    : PersistentRequestQueue
     private let observer : NetworkObserver
@@ -74,8 +77,8 @@ internal final class InternalHttpClient {
         processorRef = QueueProcessor(
             queue           : queue,
             networkObserver : observer,
-            executeRequest  : { [session = self.session, apiKey = self.apiKey] queued in
-                let (result, retryAfterSec) = await Self.executeNow(queued: queued, session: session, apiKey: apiKey)
+            executeRequest  : { [session = self.session, apiKey = self.apiKey, messagingApiKey = self.messagingApiKey] queued in
+                let (result, retryAfterSec) = await Self.executeNow(queued: queued, session: session, apiKey: apiKey, messagingApiKey: messagingApiKey)
                 if case .success = result { return (true, nil) }
                 return (false, retryAfterSec)
             }
@@ -86,8 +89,9 @@ internal final class InternalHttpClient {
 
     // MARK: - Public API
 
-    func post(path: String, body: String) async -> Result<String, Error> {
-        let fullURL = baseURL + path
+    func post(path: String, body: String, messagingService: Bool = false) async -> Result<String, Error> {
+        let resolvedBaseURL = messagingService ? messagingBaseURL : baseURL
+        let fullURL = resolvedBaseURL + path
         let queued  = QueuedRequest(url: fullURL, method: "POST", body: body)
 
         guard observer.isCurrentlyConnected else {
@@ -134,6 +138,7 @@ internal final class InternalHttpClient {
     // MARK: - Retry logic
 
     private func executeWithRetry(queued: QueuedRequest) async -> Result<String, Error> {
+        let messagingApiKey = self.messagingApiKey
         var lastResult: Result<String, Error> = .failure(HttpClientError.offline)
 
         for attempt in 1...Self.maxInlineRetries {
@@ -146,7 +151,7 @@ internal final class InternalHttpClient {
             }
 
             AdaptiveLogger.log(tag: "HttpClient", message: "Attempt \(attempt)/\(Self.maxInlineRetries) -> \(queued.url)")
-            let (result429, retryAfterSec) = await Self.executeNow(queued: queued, session: session, apiKey: apiKey)
+            let (result429, retryAfterSec) = await Self.executeNow(queued: queued, session: session, apiKey: apiKey, messagingApiKey: messagingApiKey)
             lastResult = result429
 
             if case .success = lastResult { AdaptiveLogger.log(tag: "HttpClient", message: "Request succeeded"); return lastResult }
@@ -171,9 +176,10 @@ internal final class InternalHttpClient {
     // MARK: - Execution
 
     private static func executeNow(
-        queued  : QueuedRequest,
-        session : URLSession,
-        apiKey  : String
+        queued          : QueuedRequest,
+        session         : URLSession,
+        apiKey          : String,
+        messagingApiKey : String = ""
     ) async -> (Result<String, Error>, TimeInterval?) {
 
         guard let url = URL(string: queued.url) else {
@@ -182,7 +188,9 @@ internal final class InternalHttpClient {
 
         var components        = URLComponents(url: url, resolvingAgainstBaseURL: false)!
         var queryItems        = components.queryItems ?? []
-        queryItems.append(URLQueryItem(name: "code", value: apiKey))
+        let isMessagingRequest = url.host?.contains("adlearningmessaging") == true
+        let resolvedApiKey = isMessagingRequest ? messagingApiKey : apiKey
+        queryItems.append(URLQueryItem(name: "code", value: resolvedApiKey))
         components.queryItems = queryItems
 
         guard let finalURL = components.url else {

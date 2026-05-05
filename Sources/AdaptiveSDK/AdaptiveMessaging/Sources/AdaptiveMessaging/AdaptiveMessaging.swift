@@ -5,161 +5,87 @@ import AdaptiveCore
 public final class AdaptiveMessaging {
     nonisolated(unsafe) public static let shared = AdaptiveMessaging()
 
-    // ── Store-and-forward (pre-login push token) ────────────────────────────────────
-    //
-    // Industry pattern (WebEngage, FreshChat, CleverTap):
-    //   1. Push token arrives at any point -- even before the user logs in.
-    //   2. We always store the token. If a user is already authenticated we
-    //      send it immediately; otherwise we persist it and flush it the
-    //      moment login() is called on AdaptiveCore.
-    //   3. The device is always identifiable (permanent deviceId). userId is
-    //      optional metadata added once the user authenticates.
-    //
-    // The loginListener is registered once in init and lives for the lifetime
-    // of the singleton, so no retain-cycle issues occur.
-    // ───────────────────────────────────────────────────────────────────────────
+    // ── Payload keys ──────────────────────────────────────────────────────────
+    public static let extraNotificationId = "adaptive_message_id"
+    public static let extraActionUrl      = "adaptive_action_url"
 
-    /// Eagerly initializes the Messaging module so that its login and
-    /// registration listeners are registered with `AdaptiveCore` **before**
-    /// any `login()` or registration event happens.
-    ///
-    /// Call this once during app startup. Idempotent.
+    // ── Store-and-forward (pre-login push token) ──────────────────────────────
     public static func initialize() {
-        _ = shared // triggers init()
+        _ = shared
         AdaptiveLogger.log(tag: "Adaptive Messaging", message: "Messaging module initialized")
     }
 
-    // ── Registration listener state ───────────────────────────────────────────────────
-    // Triggered by Analytics after a registration event is confirmed. Posts
-    // the latest FCM token to link the newly-registered user to this device.
-    // A session-level dedup guard prevents double-posting when login-flush
-    // also runs for the same user+token.
     private var lastPostedDeviceToken: (userId: String, token: String)? = nil
-    // ─────────────────────────────────────────────────────────────────────────
 
     private init() {
         AdaptiveCore.shared.addLoginListener { [weak self] user in
             guard self != nil else { return }
             Task {
-                // 1. Flush pending push token
                 if let pending = MessagingPreferences.getPendingToken() {
-                    AdaptiveLogger.log(
-                        tag: "Adaptive Messaging",
-                        message: "Login detected -- flushing pending token for user \(user.userId)"
-                    )
+                    AdaptiveLogger.log(tag: "Adaptive Messaging", message: "Login detected — flushing pending token for user \(user.userId)")
                     await MessagingRepository.updateFCMToken(token: pending, userId: user.userId)
                     MessagingPreferences.clearPendingToken()
-                    AdaptiveLogger.log(tag: "Adaptive Messaging", message: "Pending token sent successfully")
-                }
-
-                // 2. Flush pending events one by one
-                let pendingEvents = MessagingPreferences.getPendingEvents()
-                if !pendingEvents.isEmpty {
-                    AdaptiveLogger.log(
-                        tag: "Adaptive Messaging",
-                        message: "Login detected -- flushing \(pendingEvents.count) pending event(s) for user \(user.userId)"
-                    )
-                    MessagingPreferences.clearPendingEvents()
-                    for event in pendingEvents {
-                        await MessagingRepository.sendEvent(
-                            eventName: event.eventName,
-                            body: event.body,
-                            userId: user.userId
-                        )
-                    }
                 }
             }
         }
 
-        // Registration observer: post FCM token for newly registered user.
         AdaptiveCore.shared.addRegistrationListener { [weak self] user in
             guard let self = self else { return }
-            guard let token = AdaptiveCore.shared.getLatestFcmToken() else {
-                AdaptiveLogger.log(
-                    tag: "Adaptive Messaging",
-                    message: "Registration detected but no FCM token yet – will flush on next updateFCMToken"
-                )
-                return
-            }
-            if let last = self.lastPostedDeviceToken, last.userId == user.userId, last.token == token {
-                AdaptiveLogger.log(
-                    tag: "Adaptive Messaging",
-                    message: "Device token already posted for user \(user.userId) – skipping duplicate"
-                )
-                return
-            }
+            guard let token = AdaptiveCore.shared.getLatestFcmToken() else { return }
+            if let last = self.lastPostedDeviceToken, last.userId == user.userId, last.token == token { return }
             Task { [weak self] in
                 await MessagingRepository.updateFCMToken(token: token, userId: user.userId)
                 self?.lastPostedDeviceToken = (user.userId, token)
-                AdaptiveLogger.log(
-                    tag: "Adaptive Messaging",
-                    message: "FCM token linked to user \(user.userId) after registration"
-                )
             }
         }
     }
 
-    // Register or refresh the push token.
-    //
-    // Call this from application(_:didRegisterForRemoteNotificationsWithDeviceToken:)
-    // or from your FCM Messaging.messaging().token(completion:) callback.
-    // It is safe to call at any time -- before or after AdaptiveCore.login().
-    //
-    // - User already logged in  => token is sent to the server immediately
-    //   with the user ID and device ID.
-    // - No user yet             => token is persisted locally (survives app
-    //   restarts) and is automatically flushed the next time
-    //   AdaptiveCore.login() is called, exactly as FreshChat / WebEngage behave.
+    // MARK: - FCM Token
+
     public func updateFCMToken(token: String) async {
         AdaptiveCore.shared.checkInitialization()
-
-        // Always persist the latest token in AdaptiveCore so that other modules
-        // (e.g. AdaptiveAnalytics) can read it without a direct dependency on
-        // AdaptiveMessaging. This survives app restarts and is the single
-        // source-of-truth for the most-recent FCM token across the SDK.
         AdaptiveCore.shared.saveFcmToken(token)
-
         if let currentUser = AdaptiveCore.shared.currentUser {
-            // Fast path: user is authenticated, send straight away.
             await MessagingRepository.updateFCMToken(token: token, userId: currentUser.userId)
         } else {
-            // Deferred path: persist the token and wait for login.
             MessagingPreferences.savePendingToken(token)
-            AdaptiveLogger.log(
-                tag: "Adaptive Messaging",
-                message: "Token stored locally -- will be sent when AdaptiveCore.login() is called"
-            )
         }
     }
 
-    /// Send a messaging event to the backend.
-    ///
-    /// - If the user is already logged in, the event is posted immediately.
-    /// - If not, the event is persisted locally and automatically flushed
-    ///   (one by one, in order) the next time `AdaptiveCore.login()` is called.
-    ///
-    /// - Parameters:
-    ///   - eventName: Event identifier (used as the API path segment).
-    ///   - data:      JSON string representing the event body.
+    // MARK: - Events
+
     public func sendEvent(eventName: String, data: String) async {
         AdaptiveCore.shared.checkInitialization()
-
         if let currentUser = AdaptiveCore.shared.currentUser {
-            // Fast path: user is authenticated, send straight away.
-            await MessagingRepository.sendEvent(
-                eventName: eventName,
-                body: data,
-                userId: currentUser.userId
-            )
+            await MessagingRepository.sendEvent(eventName: eventName, body: data, userId: currentUser.userId)
         } else {
-            // Deferred path: persist the event and wait for login.
             MessagingPreferences.addPendingEvent(PendingEvent(eventName: eventName, body: data))
-            AdaptiveLogger.log(
-                tag: "Adaptive Messaging",
-                message: "Event '\(eventName)' queued -- will be sent when AdaptiveCore.login() is called"
+        }
+    }
+
+    // MARK: - Notification Status
+
+    /// Reports a notification lifecycle status event.
+    /// Fires immediately — no login required; device_id is always included,
+    /// user_id is attached only when a user is currently authenticated.
+    public func reportNotificationStatus(
+        notificationId: String,
+        status: String
+    ) {
+        Task {
+            await MessagingRepository.sendNotificationStatus(
+                notificationId: notificationId,
+                status: status
             )
         }
     }
+
+    /// Convenience: fires DELIVERED_CONFIRMED immediately on payload receipt.
+    public func markNotificationDeliveredConfirmed(notificationId: String) {
+        reportNotificationStatus(notificationId: notificationId, status: NotificationStatus.deliveryConfirmed.rawValue)
+    }
+
+    // MARK: - Notification Display
 
     public func isAdaptiveNotification(data: String) -> Bool {
         guard let jsonData = data.data(using: .utf8),
@@ -169,6 +95,8 @@ public final class AdaptiveMessaging {
         return String(describing: jsonObject["source"]) == "adaptive"
     }
 
+    /// Parse an Adaptive FCM payload and display the notification locally.
+    /// Sends DELIVERED_CONFIRMED immediately, then VIEWED once the banner appears.
     public func showNotification(from payload: String) {
         guard let jsonData = payload.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
@@ -186,10 +114,22 @@ public final class AdaptiveMessaging {
             message = json["description"] as? String ?? json["body"] as? String ?? message
         }
 
-        guard !message.isEmpty else { return }
-        NotificationHandler.shared.showNotification(title: title, message: message)
-    }
+        let notificationId = json[AdaptiveMessaging.extraNotificationId] as? String
+        let actionUrl      = json[AdaptiveMessaging.extraActionUrl]       as? String
 
- 
+        guard !message.isEmpty else { return }
+
+        if let nid = notificationId, !nid.isEmpty {
+            markNotificationDeliveredConfirmed(notificationId: nid)
+            NotificationHandler.shared.showNotification(
+                title: title,
+                message: message,
+                notificationId: nid,
+                actionUrl: actionUrl
+            )
+        } else {
+            NotificationHandler.shared.showNotification(title: title, message: message)
+        }
+    }
 }
 #endif
