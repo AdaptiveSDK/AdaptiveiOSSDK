@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name             = 'AdaptiveSDK'
-  s.version          = '1.0.24'
+  s.version          = '1.0.28'
   s.summary          = 'Modular Swift SDK for adaptive learning — analytics, messaging, and core networking.'
   s.description      = <<-DESC
     AdaptiveSDK is a meta-pod that pulls in all Adaptive modules:

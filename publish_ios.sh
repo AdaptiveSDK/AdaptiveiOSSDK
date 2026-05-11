@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # publish_ios.sh
-# Push all AdaptiveSDK podspecs to CocoaPods Trunk (v1.0.7).
-# SPM is already available via the 1.0.7 tag pushed to GitHub.
+# Push all AdaptiveSDK podspecs to CocoaPods Trunk (v1.0.28).
+# SPM is already available via the 1.0.28 tag pushed to GitHub.
 #
 # Prerequisites:
 #   1. You have a CocoaPods Trunk session:
@@ -16,7 +16,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
 
-VERSION="1.0.24"
+VERSION="1.0.28"
 
 echo "══════════════════════════════════════════"
 echo " Adaptive iOS SDK v${VERSION} – publish to CocoaPods"
