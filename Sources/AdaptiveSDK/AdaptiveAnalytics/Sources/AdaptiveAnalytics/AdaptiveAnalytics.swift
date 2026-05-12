@@ -129,6 +129,13 @@ public final class AdaptiveAnalytics {
         await logEventRaw(queryName: "set-user-info", body: body, eventName: "Set User Info Event")
     }
 
+    public func logCustomEvent(eventName: String, data: [String: Any]) async {
+        let wrapped: [String: Any] = ["EventPayloadJson": data , "EventName" : eventName]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: wrapped),
+              let body = String(data: jsonData, encoding: .utf8) else { return }
+        await logEventRaw(queryName: "custom", body: body, eventName: "\(eventName) Event")
+    }
+
     public func logGradeChangeEvent(data: GradeChangeEvent) async {
         await logEvent(queryName: "grade-change", event: data, eventName: "Grade Change Event")
     }

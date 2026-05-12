@@ -52,17 +52,6 @@ public final class AdaptiveMessaging {
         }
     }
 
-    // MARK: - Events
-
-    public func sendEvent(eventName: String, data: String) async {
-        AdaptiveCore.shared.checkInitialization()
-        if let currentUser = AdaptiveCore.shared.currentUser {
-            await MessagingRepository.sendEvent(eventName: eventName, body: data, userId: currentUser.userId)
-        } else {
-            MessagingPreferences.addPendingEvent(PendingEvent(eventName: eventName, body: data))
-        }
-    }
-
     // MARK: - Notification Status
 
     /// Reports a notification lifecycle status event.
