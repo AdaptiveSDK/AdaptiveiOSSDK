@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name             = 'AdaptiveMessaging'
-  s.version          = '1.0.28'
+  s.version          = '1.0.29'
   s.summary          = 'Messaging module for AdaptiveSDK — FCM push notification sync and display.'
 
   s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'
