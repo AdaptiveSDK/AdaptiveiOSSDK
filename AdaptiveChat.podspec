@@ -1,8 +1,7 @@
 Pod::Spec.new do |s|
-
-  s.name             = 'AdaptiveMessaging'
+  s.name             = 'AdaptiveChat'
   s.version          = '1.0.32'
-  s.summary          = 'Messaging module for AdaptiveSDK — FCM push notification sync and display.'
+  s.summary          = 'AI Coach chat module for AdaptiveSDK — survey flow, quizzes, flashcards, and step-by-step explanations.'
 
   s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
@@ -12,8 +11,7 @@ Pod::Spec.new do |s|
   s.swift_version          = '5.9'
   s.ios.deployment_target  = '13.0'
 
-  s.source_files       = 'Sources/AdaptiveSDK/AdaptiveMessaging/Sources/AdaptiveMessaging/**/*.swift'
+  s.source_files       = 'Sources/AdaptiveSDK/AdaptiveChat/Sources/AdaptiveChat/**/*.swift'
   s.dependency           'AdaptiveCore', '~> 1.0'
-  s.ios.frameworks     = 'UserNotifications'
-
+  s.ios.frameworks     = 'UIKit'
 end

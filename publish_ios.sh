@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # publish_ios.sh
-# Push all AdaptiveSDK podspecs to CocoaPods Trunk (v1.0.29).
-# SPM is already available via the 1.0.29 tag pushed to GitHub.
+# Push all AdaptiveSDK podspecs to CocoaPods Trunk (v1.0.32).
+# SPM is already available via the 1.0.32 tag pushed to GitHub.
 #
 # Prerequisites:
 #   1. You have a CocoaPods Trunk session:
@@ -16,7 +16,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
 
-VERSION="1.0.29"
+VERSION="1.0.32"
 
 echo "══════════════════════════════════════════"
 echo " Adaptive iOS SDK v${VERSION} – publish to CocoaPods"
@@ -32,6 +32,7 @@ SPECS=(
   "AdaptiveCore.podspec"
   "AdaptiveAnalytics.podspec"
   "AdaptiveMessaging.podspec"
+  "AdaptiveChat.podspec"
   "AdaptiveSDK.podspec"
 )
 
@@ -50,8 +51,7 @@ echo ""
 echo "  CocoaPods (add to Podfile):"
 echo "    pod 'AdaptiveCore',      '~> 1.0'"
 echo "    pod 'AdaptiveAnalytics', '~> 1.0'"
-echo "    pod 'AdaptiveMessaging', '~> 1.0'"
-echo "    # or the meta-pod:"
+echo "    pod 'AdaptiveMessaging', '~> 1.0'"echo "    pod 'AdaptiveChat',      '~> 1.0'"echo "    # or the meta-pod:"
 echo "    pod 'AdaptiveSDK',       '~> 1.0'"
 echo ""
 echo "  Swift Package Manager:"

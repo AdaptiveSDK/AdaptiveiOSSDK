@@ -9,7 +9,8 @@ let package = Package(
     products: [
         .library(name: "AdaptiveCore",      targets: ["AdaptiveCore"]),
         .library(name: "AdaptiveAnalytics", targets: ["AdaptiveAnalytics"]),
-        .library(name: "AdaptiveMessaging", targets: ["AdaptiveMessaging"])
+        .library(name: "AdaptiveMessaging", targets: ["AdaptiveMessaging"]),
+        .library(name: "AdaptiveChat",      targets: ["AdaptiveChat"]),
     ],
     targets: [
         // MARK: - AdaptiveCore
@@ -30,7 +31,14 @@ let package = Package(
             name: "AdaptiveMessaging",
             dependencies: ["AdaptiveCore"],
             path: "Sources/AdaptiveSDK/AdaptiveMessaging/Sources/AdaptiveMessaging"
-        )
+        ),
+
+        // MARK: - AdaptiveChat
+        .target(
+            name: "AdaptiveChat",
+            dependencies: ["AdaptiveCore"],
+            path: "Sources/AdaptiveSDK/AdaptiveChat/Sources/AdaptiveChat"
+        ),
     ],
     swiftLanguageVersions: [.v5]
 )

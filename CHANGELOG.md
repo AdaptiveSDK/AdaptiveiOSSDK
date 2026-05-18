@@ -3,6 +3,14 @@
 All notable changes to the Adaptive iOS SDK are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [1.0.32] – 2026-05-18
+
+### Changed
+- Unified version bump to `1.0.32` for all CocoaPods modules (`AdaptiveCore`, `AdaptiveAnalytics`, `AdaptiveMessaging`, `AdaptiveChat`, `AdaptiveSDK`) and SPM tag publishing.
+- `AdaptiveChat` added to the `AdaptiveSDK` meta-pod and CocoaPods publish pipeline.
+
+---
+
 ## [1.0.20] – 2026-04-18
 
 ### Changed

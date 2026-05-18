@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build AdaptiveExampleApp",
+            "type": "shell",
+            "command": "xcodebuild",
+            "args": [
+                "-project", "AdaptiveExampleApp.xcodeproj",
+                "-scheme", "AdaptiveExampleApp",
+                "-sdk", "iphonesimulator",
+                "-destination", "platform=iOS Simulator,name=iPhone 16",
+                "-configuration", "Debug",
+                "build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": "$xcode"
+        }
+    ]
+}
