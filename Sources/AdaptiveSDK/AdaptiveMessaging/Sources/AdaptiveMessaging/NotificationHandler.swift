@@ -81,10 +81,9 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    // MARK: - UNUserNotificationCenterDelegate
-
-    // Foreground display — show banner + sound.
-    // Also fires VIEWED because the notification is visible to the user.
+    // Foreground display — only show banner for Adaptive-owned notifications.
+    // Non-Adaptive notifications (e.g. FCM) are suppressed here so the Flutter
+    // layer can handle them via flutter_local_notifications without duplicates.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
@@ -93,10 +92,15 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         let info           = notification.request.content.userInfo
         let notificationId = info[kNotificationId] as? String
 
-        if let nid = notificationId, !nid.isEmpty {
-            AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: NotificationStatus.view.rawValue)
-            AdaptiveLogger.log(tag: "NotificationHandler", message: "Notification VIEWED (foreground) id=\(nid)")
+        // Only present notifications created by Adaptive SDK.
+        guard let nid = notificationId, !nid.isEmpty else {
+            // Not an Adaptive notification — suppress and let Flutter handle it.
+            completionHandler([])
+            return
         }
+
+        AdaptiveMessaging.shared.reportNotificationStatus(notificationId: nid, status: NotificationStatus.view.rawValue)
+        AdaptiveLogger.log(tag: "NotificationHandler", message: "Notification VIEWED (foreground) id=\(nid)")
 
         if #available(iOS 14.0, *) {
             completionHandler([.banner, .sound])

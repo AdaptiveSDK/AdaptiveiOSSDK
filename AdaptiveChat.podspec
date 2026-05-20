@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'AdaptiveChat'
-  s.version          = '1.0.32'
+  s.version          = '1.0.33'
   s.summary          = 'AI Coach chat module for AdaptiveSDK — survey flow, quizzes, flashcards, and step-by-step explanations.'
 
   s.homepage         = 'https://github.com/AdaptiveSDK/AdaptiveiOSSDK'
